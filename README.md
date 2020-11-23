@@ -2,7 +2,25 @@
 
 ## Overview
 
-This ...
+This is a CLI trading bot
+
+## Help result
+
+```bash
+tbot.js maker [allocation] [spread]
+
+Market Maker
+
+Arguments positionnels :
+  allocation  Percentage of your current balance.              [défaut : "0.25"]
+  spread      Percentage added to the bot selling price, substracted to the
+              buying price.                                    [défaut : "0.01"]
+
+Options :
+  -h, --help     Show this help                                        [booléen]
+      --version  Affiche le numéro de version                          [booléen]
+  -v, --verbose  Run with verbose logging                              [booléen]
+```
 
 ## Todos
 
@@ -24,23 +42,10 @@ git clone https://github.com/abeauvois/tbot.git
 npm i
 ```
 
-## How to create a CSV file with a line of headers (in /csv folder)
+## 1. Run in the terminal
 
 ```bash
- > echo sha, contributor, date, message > ./csv/gitlog.csv
-```
-
-- Append the CSV file with git log output, filtered by your `git username`
-
-```bash
- > git log --date=local --pretty=format:'%h, %an, %ad, "%s"' | egrep {YOUR GIT USERNAME} >> ./csv/gitlog.csv
-
-```
-
-## 1.
-
-```bash
-yarn start
+yarn start maker 0.2 0.3
 ```
 
 ## 2. For a report sent by email to yourself (via gmail):
