@@ -5,26 +5,13 @@
 // poll$.subscribe();
 
 require("dotenv").config();
-const c = require("chalk");
 
-const axios = require("axios");
 const ccxt = require("ccxt");
-const { from, of, timer, defer } = require("rxjs");
-const {
-  startWith,
-  delay,
-  tap,
-  map,
-  skip,
-  switchMap,
-  mergeMap,
-  switchMapTo,
-  repeat,
-  pairwise,
-  filter,
-  skipUntil,
-} = require("rxjs/operators");
 
+const { defer } = require("rxjs");
+const { tap, switchMap, skipUntil } = require("rxjs/operators");
+
+const { t, get2Digits } = require("./templates");
 // CCTX ticker data
 /* 
 {
@@ -54,25 +41,6 @@ const binanceExchange = new ccxt.binance({
   apiKey: process.env.API_KEY,
   secret: process.env.API_SECRET,
 });
-
-const getCoingeckoQuote = (currency) => {
-  return {
-    getQuotes: () =>
-      Promise.all([
-        axios.get(`https://api.coingecko.com/api/v3/simple/price?ids=${currency}&vs_currencies=usd`),
-        axios.get("https://api.coingecko.com/api/v3/simple/price?ids=tether&vs_currencies=usd"),
-      ]),
-    toPrice: ([currencyData, tetherData]) => currencyData[currency].usd / tetherData.tether.usd,
-  };
-};
-
-const CoingeckoTick$ = of({}).pipe(
-  switchMap(() => getCoingeckoQuote("bitcoin").getQuotes()),
-  map(([r1, r2]) => getCoingeckoQuote("bitcoin").toPrice([r1.data, r2.data])),
-  //   tap(console.log),
-  delay(3000),
-  repeat()
-);
 
 const getValidSymbol = async (exchange, asset = "BTC", base = "USDT") => {
   await exchange.loadMarkets();
@@ -112,42 +80,42 @@ const getExchange = async (exchange, asset = "BTC", base = "USDT") => {
     },
     cancelOrders: async () => {
       // Cancel open orders left from previous tick, if any
-      const orders = await exchange.fetchOpenOrders(market);
+      const orders = await exchange.fetchOpenOrders(symbol);
       orders.forEach(async (order) => {
         await exchange.cancelOrder(order.id);
       });
     },
 
-    sendOrder: async (marketPrice) => {
-      const config = {
-        allocation: 0.3, // Percentage of our available funds that we trade
-        spread: 0.01, // = 1% => Percentage above and below market prices for sell and buy orders
-      };
-      // Calculate new orders parameters
-      const buyPrice = get2Digits(marketPrice * (1 - config.spread));
-      const sellPrice = get2Digits(marketPrice * (1 + config.spread));
-      const balances = await exchange.fetchBalance();
-      const assetBalance = balances.free[asset]; // e.g. 0.01 BTC
-      const baseBalance = balances.free[base]; // e.g. 20 USDT
-      const buyVolume = get2Digits((baseBalance * config.allocation) / marketPrice);
-      const sellVolume = get2Digits(assetBalance * config.allocation);
+    sendOrder: async (marketPrice, allocation, spread) => {
+      // const config = {
+      //   allocation: 0.3, // Percentage of our available funds that we trade
+      //   spread: 0.01, // = 1% => Percentage above and below market prices for sell and buy orders
+      // };
 
-      console.log(`
-      New Order for ${c.blue(symbol)}...
-      Asset balance: ${c.yellow.bold(assetBalance)} ${asset}
-      Base balance: ${c.yellow.bold(baseBalance)} ${base}
-      Creating limit buy order for ${buyVolume}@${buyPrice} = ${get2Digits(buyVolume * buyPrice)} ${base}
-      Creating limit sell order for ${sellVolume}@${sellPrice} = ${get2Digits(sellVolume * sellPrice)} ${base}
-      `);
+      const balances = await exchange.fetchBalance();
+      const assetBalance = balances.free[asset]; // e.g. 0.01 BT,
+      const baseBalance = balances.free[base]; // e.g. 20 USD,
+
+      const orderParams = {
+        symbol,
+        asset,
+        base,
+        buyPrice: get2Digits(marketPrice * (1 - spread)),
+        sellPrice: get2Digits(marketPrice * (1 + spread)),
+        buyVolume: get2Digits((baseBalance * allocation) / marketPrice),
+        sellVolume: get2Digits(assetBalance * allocation),
+        balances,
+        assetBalance,
+        baseBalance,
+      };
+
+      console.log(t.order({ ...orderParams }));
 
       //Send orders
       // await exchange.createLimitBuyOrder(symbol, buyVolume, buyPrice);
       // await exchange.createLimitSellOrder(symbol, sellVolume, sellPrice);
 
-      return `
-      New Order for ${symbol}...
-      Created limit buy order for ${buyVolume}@${buyPrice}  
-    `;
+      return t.order({ ...orderParams });
     },
 
     getTrades: async () => {
@@ -193,29 +161,21 @@ const getExchange = async (exchange, asset = "BTC", base = "USDT") => {
   };
 };
 
-const get2Digits = (value) => Math.floor(value * 100) / 100;
-const getPercent = (prev, curr) => get2Digits(((curr - prev) / prev) * 100);
-
 let actions;
 
 const start$ = defer(async () => actions || (actions = await getExchange(binanceExchange, "ETH", "USDT")));
 
-const trade$ = start$.pipe(
-  skipUntil(start$),
-  switchMap(() => actions.getTrades()),
-  tap(console.log)
-);
-
-const sendOrder$ = start$.pipe(
-  skipUntil(start$),
-  switchMap(() => actions.getBestPrice()),
-  switchMap((price) => actions.sendOrder(price.spot))
-);
+const sendOrder = ({ allocation, spread }) =>
+  start$.pipe(
+    skipUntil(start$),
+    switchMap(() => actions.getBestPrice()),
+    switchMap((price) => actions.sendOrder(price.spot, allocation, spread))
+  );
 
 const CCTXTick$ = start$.pipe(
   skipUntil(start$),
   switchMap(() => actions.getBestPrice()),
-  switchMap((price) => actions.sendOrder(price.spot)),
+  // switchMap((price) => actions.sendOrder(price.spot,allocation, spread)),
 
   tap((tick) => console.log("tick:", tick))
   //   map(({ timestamp, datetime, last, percentage }) => ({ timestamp, datetime, last, percentage })),
@@ -236,4 +196,5 @@ const poll$ = CCTXTick$
 module.exports = {
   poll$,
   CCTXTick$,
+  sendOrder,
 };

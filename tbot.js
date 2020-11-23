@@ -10,17 +10,23 @@ const { gmail } = require("./src/gmail");
 
 yargs(hideBin(process.argv))
   .command(
-    "maker [spread]",
+    "maker [allocation] [spread]",
     "Market Maker",
     (yargs) => {
-      yargs.positional("spread", {
-        describe: "Percentage added to the bot selling price, substracted to the buying price.",
-        default: "0.01",
-      });
+      yargs
+        .positional("allocation", {
+          describe: "Percentage of your current balance.",
+          default: "0.25",
+        })
+        .positional("spread", {
+          describe: "Percentage added to the bot selling price, substracted to the buying price.",
+          default: "0.01",
+        });
     },
     (argv) => {
-      console.info(t.spread(argv.spread));
-      maker({ spread: argv.spread });
+      console.info(t.spread({ spread: argv.spread }));
+      console.info(t.allocation({ allocation: argv.allocation }));
+      maker({ allocation: argv.allocation, spread: argv.spread });
     }
   )
   .command(

@@ -1,5 +1,7 @@
-const maker = ({ spread }) => {
-  console.log("maker ~ spread", spread);
+const { sendOrder } = require("./tick");
+
+const maker = ({ allocation, spread }) => {
+  sendOrder({ allocation, spread }).subscribe();
 };
 
 module.exports = {
