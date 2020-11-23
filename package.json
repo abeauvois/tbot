@@ -1,0 +1,41 @@
+{
+  "name": "tbot",
+  "version": "1.0.0",
+  "description": "Trading bot",
+  "main": "tbot.js",
+  "scripts": {
+    "start": "node tbot.js",
+    "watch": "nodemon tbot.js",
+    "test": "jest --watch"
+  },
+  "jest": {
+    "verbose": true
+  },
+  "keywords": [
+    "git",
+    "log",
+    "reporting",
+    "email",
+    "gmail",
+    "aouth2"
+  ],
+  "author": "abeauvois",
+  "license": "MIT",
+  "dependencies": {
+    "axios": "^0.19.0",
+    "ccxt": "^1.37.27",
+    "chalk": "^4.1.0",
+    "dotenv": "^8.2.0",
+    "googleapis": "^65.0.0",
+    "nodemailer": "^6.4.16",
+    "nodemailer-smtp-transport": "^2.7.4",
+    "nodemon": "^2.0.6",
+    "rx-from-csv": "^1.0.0",
+    "rxjs": "^6.6.3",
+    "yargs": "^16.1.1"
+  },
+  "devDependencies": {
+    "eslint": "^7.14.0",
+    "jest": "^26.6.3"
+  }
+}
